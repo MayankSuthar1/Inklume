@@ -1,0 +1,25 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="inklume-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#1F4B43" />
+      <stop offset="100%" stopColor="#14342E" />
+    </linearGradient>
+    <linearGradient id="inklume-gold" x1="20" y1="16" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#F5D78E" />
+      <stop offset="50%" stopColor="#E5B869" />
+      <stop offset="100%" stopColor="#C99846" />
+    </linearGradient>
+    <linearGradient id="inklume-nib" x1="16" y1="12" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#FAF7F0" />
+      <stop offset="100%" stopColor="#EAE5DA" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#inklume-bg)" stroke="#EAE5DA" stroke-opacity="0.2" stroke-width="1.5" />
+  <circle cx="32" cy="28" r="16" fill="url(#inklume-gold)" fill-opacity="0.15" />
+  <path d="M32 50 C32 50 19 35 19 23 C19 15.82 24.82 10 32 10 C39.18 10 45 15.82 45 23 C45 35 32 50 32 50 Z" fill="url(#inklume-nib)" />
+  <line x1="32" y1="28" x2="32" y2="50" stroke="#1F4B43" stroke-width="1.75" stroke-linecap="round" />
+  <path d="M32 20 C32 23.5 30 25.5 26.5 25.5 C30 25.5 32 27.5 32 31 C32 27.5 34 25.5 37.5 25.5 C34 25.5 32 23.5 32 20 Z" fill="url(#inklume-gold)" />
+  <circle cx="32" cy="25.5" r="1.25" fill="#FAF7F0" />
+  <circle cx="32" cy="53.5" r="2" fill="url(#inklume-gold)" />
+</svg>

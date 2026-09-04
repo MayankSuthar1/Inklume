@@ -1,0 +1,8 @@
+{
+  "name": "Inklume",
+  "description": "A quiet desk for thinking out loud. Reflective journaling and dialogue with Gemini, featuring owner-scoped Firestore persistence and notebook craftsmanship.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
