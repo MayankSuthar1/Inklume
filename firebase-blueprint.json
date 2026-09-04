@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique user ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration timestamp"
+        }
+      },
+      "required": ["uid"]
+    },
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "A single personal reflection or document-first journal entry",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the journal entry"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID of the user who owns this reflection"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title or headline of the entry"
+        },
+        "content": {
+          "type": "object",
+          "description": "TipTap ProseMirror JSON content representation of the document"
+        },
+        "summary": {
+          "type": "string",
+          "description": "AI-generated or user summary of the reflection"
+        },
+        "keyInsights": {
+          "type": "array",
+          "description": "Key points or insights extracted from the reflection"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Keywords or mood tags associated with the entry"
+        },
+        "turns": {
+          "type": "array",
+          "description": "Companion conversation turns tied to this journal entry"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last updated timestamp"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "archived"],
+          "description": "Status of the journal entry"
+        }
+      },
+      "required": ["id", "userId", "title", "createdAt", "updatedAt", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Root user profile document"
+    },
+    "/users/{userId}/entries/{entryId}": {
+      "schema": "JournalEntry",
+      "description": "Individual personal journal entries, private and isolated to the authenticated owner"
+    }
+  }
+}
