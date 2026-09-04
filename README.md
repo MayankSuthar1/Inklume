@@ -1,200 +1,128 @@
 # Inklume — The Reflective Thinking Partner & Journal
 
 > **A quiet desk for thinking out loud.**  
-> Built with Next.js 15, Google Cloud Firestore, Firebase Authentication, and Google Gemini.
+> Inklume is an authenticated, document-first personal journal and conversational companion designed to help you untangle thoughts, explore ideas, and capture enduring reflections.
 
 ---
 
-## 1. Overview & Craft Philosophy
+## About the Project
 
-**Inklume** is an authenticated, document-first personal journal and conversational thinking companion designed with the tactile calm of a physical notebook and a warm desk lamp. 
+Most journaling apps either treat writing as a solitary, blank-page chore or reduce AI to an invasive autocomplete chatbot that writes *for* you.
 
-Instead of treating AI as a chat-only assistant or an invasive auto-completer, Inklume pairs:
-1. **The Writing Desk**: A rich document editor (powered by ProseMirror / TipTap) with tactile typography, heading hierarchy, pull quotes, highlights, word metrics, and voice dictation.
-2. **The Thinking Companion**: A quiet, attentive companion panel offering Socratic inquiries, empathetic listening, philosophical reflections, or analytical friction based on user preferences.
-3. **Synthesis & Deep Archival**: Automatic synthesis that distills both what was drafted on the page and what emerged during the dialogue into lasting insights, stored with owner-scoped isolation in Cloud Firestore.
+**Inklume** takes a different path. It is built as a quiet desk inspired by tactile stationery and warm desk lighting. Here, writing remains document-first: you write your own words, while a gentle, non-intrusive thinking companion sits quietly beside the page. The companion asks thoughtful questions, highlights patterns, and offers fresh perspectives—serving as a sounding board rather than a ghostwriter.
 
----
-
-## 2. Threat Model & Security Baseline
-
-Prior to implementation, each subsystem is evaluated against five risk zones per the production security directives:
-
-| Zone | Primary Threat / Risk | Specific Zone Vector | Countermeasure & Defensive Control |
-| :--- | :--- | :--- | :--- |
-| **1. Input Surfaces** | Prompt Injection, Cross-Site Scripting (XSS), Malformed Payloads | User document text, companion dialogue turns, audio recordings, selection prompts | Strict schema validation; body parsing middleware returns `400` on invalid shapes; prompt boundaries tag untrusted text as inert data (`<UserSelection>`, `<SurroundingContext>`); TipTap sanitizes HTML output; output escaping prior to rendering. |
-| **2. Planning & Reasoning** | System Instruction Override, Role Hijacking | Adversarial text in journal entries attempting to redefine companion instructions | System instructions explicitly order the model to treat dialogue and document content as inert subject matter; user style preferences are sanitized and capped (max 300 chars, stripped of angle brackets). |
-| **3. Tool & Endpoint Execution** | SSRF, Privilege Escalation, Abuse & Budget Exhaustion | Backend API routes (`/api/journal/*`) calling Gemini API | All endpoints are server-side proxies; client requests are rate-limited using a per-user sliding window token bucket (25 req/min); inputs are truncated to strict character caps; zero client-supplied UID trust on auth boundaries. |
-| **4. Memory & State** | Cross-Tenant Data Leakage, Incomplete Deletion ("Orphaned Writes") | Cloud Firestore database persistence | Zero-trust security rules strictly scoped to `/users/{userId}/entries/{entryId}`; updates require `request.auth.uid == userId`; `undefined` values stripped before writing; hard deletion permanently purges all user documents via batch deletion. |
-| **5. Inter-System Calls** | API Key Leakage, Service Outages, Quota Failures | Outbound calls to Google GenAI and Firebase SDKs | `GEMINI_API_KEY` is strictly server-side (retrieved via Secret Manager / environment variable; never sent to browser); 4-step model fallback ladder (`gemini-3.6-flash` → `gemini-3.1-flash-lite` → `gemini-flash-latest` → `gemini-3.7-flash`); logs record event types and IDs only—**never plaintext reflection text or prompts**. |
+When you finish a writing session, Inklume distills your writing and conversation into concise insights, archiving your personal growth securely in the cloud.
 
 ---
 
-## 3. Architecture & Tech Stack
+## Key Features & Capabilities
 
-- **Frontend & Server Framework**: Next.js 15+ (App Router), React 19, TypeScript, Tailwind CSS v4.
-- **Editor Engine**: TipTap 3 (ProseMirror core) with custom typography, blockquotes, lists, bubble selection menus, and word/character counters.
-- **Identity & Authentication**: Firebase Authentication with federated Google Sign-In (no stored passwords, no credential handling).
-- **Persistence**: Google Cloud Firestore with owner-scoped security rules under `/users/{userId}/entries/{entryId}`.
-- **App Check Protection**: Firebase App Check with ReCaptcha Enterprise provider.
-- **AI Intelligence**:
-  - Direct server-side `@google/genai` integration.
-  - Multi-model fallback ladder across Gemini Flash models.
-  - Socratic, Empathetic, Philosophical, Creative, and Direct companion personas.
-  - Spoken reflection transcription via browser `MediaRecorder` and Gemini multimodal audio processing.
-- **Aesthetic Palette**:
-  - Paper canvas: `#FAF7F0`
-  - Deep ink charcoal: `#211F1C`
-  - Calming forest teal: `#1F4B43`
-  - Warm ochre highlight: `#C99A3E`
-  - Crimson accent: `#B3432B`
-  - Distinctive typography: Fraunces serif paired with Work Sans.
+### 1. Document-First Writing Desk
+- **Distraction-Free Typography**: A spacious, distraction-free canvas powered by ProseMirror and TipTap, featuring serif headings, clean body formatting, and generous margins.
+- **Rich Formatting Toolbar**: Easy-access controls for headings (H1, H2, H3), blockquotes, bulleted lists, numbered lists, task checkboxes, code blocks, and horizontal rules.
+- **Live Metrics**: Real-time word count, character count, and estimated reading time tracked unobtrusively at the bottom of the page.
+- **Auto-Save**: Changes persist continuously to your private Cloud Firestore vault as you write.
+
+### 2. Contextual Bubble Menu & Inline Reflection
+- **Highlight-to-Reflect**: Highlight any sentence or paragraph in your text to trigger a floating menu with instant formatting tools (Bold, Italic, Strikethrough, Highlight).
+- **"Reflect on this"**: Send a specific excerpt to the companion with one click. The companion leaves a targeted margin note or open question focused solely on that highlighted passage.
+
+### 3. Spoken Voice Reflections
+- **Universal Audio Dictation**: Speak your thoughts freely using standard browser audio recording (`MediaRecorder`).
+- **Gemini Multimodal Transcription**: Spoken recordings are transcribed with proper punctuation and capitalization via Google Gemini's multimodal audio models, then inserted directly at your cursor position in the document.
+
+### 4. The Socratic Thinking Companion
+- **A Dialogue Partner Beside the Desk**: A collapsible side panel where you can converse about the ideas developing on the page.
+- **Thoughtful Inquiries**: Instead of generic pleasantries or generic answers, the companion asks clarifying questions, uncovers unexamined assumptions, and helps you explore deeper motives.
+- **"Draft Opening Paragraph"**: If you have talked through an idea in the companion panel but haven't started typing on the page, click one button to have the companion synthesize the conversation into an authentic first-person opening reflection.
+
+### 5. Companion Stances & Personas
+Tailor the companion's tone to match your headspace:
+- **Socratic Partner**: Gently questions assumptions, asks for definitions, and probes for contradictions.
+- **Empathetic Listener**: Validates emotions, mirrors feelings with warmth, and creates a safe emotional container.
+- **Philosophical Mirror**: Connects your personal reflections to timeless philosophical ideas, paradoxes, and ethical questions.
+- **Creative Divergence**: Suggests lateral connections, metaphors, counterfactuals, and alternative angles.
+- **Direct Pragmatist**: Focuses on root causes, decisions, trade-offs, and actionable next steps.
+- **Custom Guidance**: Add your own custom behavioral rules (e.g. *"Speak briefly in one or two sentences"* or *"Help me prepare for difficult conversations"*).
+
+### 6. Reflection Synthesis & Key Insights
+- **One-Click Synthesis**: Click the **Synthesize** button to analyze your completed writing session and companion dialogue.
+- **Automatic Titling**: Generates an evocative, contextual title for your entry.
+- **Executive Realization Summary**: Formulates a concise 2–3 sentence distillation of what you realized or learned during the session.
+- **Key Insight Badges**: Extracts key takeaways and mood tags for effortless recall when reviewing past entries.
+
+### 7. Timeline Rail & Reflection Archive
+- **Historical Timeline**: Browse past entries grouped chronologically by date in a clean side rail.
+- **Instant Search**: Search through previous entries by title, text content, or insight tags.
+- **Archive & Restore**: Move past reflections into an archive view when you want a clean view of your active reflections.
+- **Permanent Deletion**: Individual entries can be permanently deleted with a confirmation safety prompt.
+
+### 8. Privacy & Data Ownership
+- **Federated Google Authentication**: Sign in securely with your Google account. No passwords are created, handled, or stored.
+- **Owner-Isolated Firestore Storage**: Every entry is stored under your authenticated user ID (`/users/{userId}/entries/{entryId}`) and protected by strict database security rules.
+- **Zero Third-Party Training**: Your private thoughts are never shared with public databases or model training sets.
+- **Hard Account Deletion**: The settings dialog includes an option to wipe your entire account and all associated documents permanently from Cloud Firestore.
 
 ---
 
-## 4. Why `firebase-applet-config.json` Contains a Web API Key
+## How to Use Inklume
 
-A common question when pushing this repository to GitHub is: **"Why is there an API key in `firebase-applet-config.json`?"**
+### Writing Your First Entry
+1. **Sign In**: Launch the app and click **Continue with Google**.
+2. **Start on the Page**: Begin typing your thoughts directly on the writing canvas. Use the top toolbar to structure headings, lists, or blockquotes.
+3. **Talk It Out**: If you hit a roadblock or want to explore an idea further, toggle open the **Thinking Companion** panel on the right and share what is on your mind.
+4. **Highlight & Inquire**: Highlight any passage you wrote and click **Reflect on this** to get a margin observation from the companion.
+5. **Synthesize & Save**: When you feel finished, click **Synthesize** to generate key insights and tags. Your entry is saved automatically.
 
-### The Key Difference: Public Client Identifiers vs. Backend Secrets
-
-1. **Firebase Web API Key (`apiKey`) — Public Client Identifier**
-   - The Firebase web API key is **not an administrative secret**. In client-side web apps, Firebase runs in the user's browser and needs to identify which Google Cloud project to route database and authentication requests to.
-   - Security is **never** based on hiding the Firebase web API key. Security is enforced through **Firestore Security Rules** (`firestore.rules`) and **Firebase Authentication**. Even with the API key and project ID, an attacker cannot read, write, or delete any data without authenticating as the authorized owner.
-   - For additional hardening, you can restrict the key in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) to your authorized website HTTP referrers.
-
-2. **Gemini API Key (`GEMINI_API_KEY`) — Strictly Private Backend Secret**
-   - In contrast, the `GEMINI_API_KEY` grants access to Google GenAI models and billed quota.
-   - In Inklume, the `GEMINI_API_KEY` is **never** in `firebase-applet-config.json` and **never bundled into or accessible by the client browser**.
-   - All Gemini calls are executed exclusively through protected server-side API routes (`/api/journal/*`) running on Cloud Run.
+### Adjusting Companion Personas
+1. Click the **Settings** (gear icon) in the top-right header.
+2. Select the **Companion** tab.
+3. Choose your preferred persona (e.g. *Philosophical Mirror* or *Direct Pragmatist*) or input your own custom instructions.
+4. Close settings—future conversations will adapt to your selected tone.
 
 ---
 
-## 5. Deployment & Production Runbook
+## Technical Architecture
 
-### Step 1: Google Cloud Secret Manager Setup
-Store your Gemini API key in Google Cloud Secret Manager:
+- **Framework**: [Next.js 15+](https://nextjs.org/) (App Router) & [React 19](https://react.dev/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **Editor Engine**: [TipTap](https://tiptap.dev/) / [ProseMirror](https://prosemirror.net/)
+- **Database & Auth**: [Google Cloud Firestore](https://firebase.google.com/docs/firestore) & [Firebase Authentication](https://firebase.google.com/docs/auth)
+- **AI Engine**: [Google Gemini Flash Models](https://ai.google.dev/) via the official `@google/genai` SDK
+- **Icons**: [Lucide React](https://lucide.dev/)
 
+---
+
+## Getting Started (Local Development)
+
+### 1. Prerequisites
+- Node.js 20+
+- A Google Cloud / Firebase project with Firestore and Google Sign-In enabled.
+- A Gemini API key from [Google AI Studio](https://aistudio.google.com/).
+
+### 2. Installation
 ```bash
-# 1. Create the secret
-gcloud secrets create GEMINI_API_KEY \
-  --replication-policy="automatic"
+# Clone the repository
+git clone https://github.com/<YOUR_USERNAME>/<YOUR_REPOSITORY_NAME>.git
+cd personal-gemini-journal
 
-# 2. Add your secret value
-echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets versions add GEMINI_API_KEY --data-file=-
-
-# 3. Grant Secret Accessor role to the Cloud Run service account
-PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value project) --format="value(projectNumber)")
-
-gcloud secrets add-iam-policy-binding GEMINI_API_KEY \
-  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
+# Install dependencies
+npm install
 ```
 
-### Step 2: Deploy Cloud Firestore Security Rules
-Deploy the owner-scoped security rules:
-
+### 3. Environment Configuration
+Copy the example environment file:
 ```bash
-firebase deploy --only firestore:rules
+cp .env.example .env.local
 ```
 
-Rules definition in `firestore.rules`:
-```rules
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      match /entries/{entryId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-    }
-  }
-}
+Populate `.env.local` with your configuration:
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### Step 3: Deploy to Cloud Run
-Deploy the application container to Cloud Run:
-
+### 4. Run the Dev Server
 ```bash
-gcloud run deploy personal-gemini-journal \
-  --source . \
-  --region asia-southeast1 \
-  --platform managed \
-  --allow-unauthenticated \
-  --port 3000 \
-  --set-secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest" \
-  --labels="app=personal-gemini-journal,tier=production"
+npm run dev
 ```
-
----
-
-## 6. Manual Test Walkthroughs
-
-The following manual test cases verify every user-visible interaction:
-
-### Test Case 1: Federated Google Sign-In & Workspace Isolation
-1. Navigate to `/` on a desktop or mobile browser.
-2. Verify the serene landing screen appears with Inklume branding, craft principles, and a single **"Continue with Google"** button (no password form).
-3. Click **"Continue with Google"** and complete sign-in.
-4. Verify you land on the private desk. The left rail displays the user's avatar, active entries count, and a fresh blank canvas.
-
-### Test Case 2: Document-First Writing & Bubble Menu
-1. In the main editor canvas, type: `"Reflections on creative momentum and resistance."`
-2. Select a portion of the text with your cursor.
-3. Observe the floating bubble menu appear with formatting options: **Bold**, **Italic**, **Highlight**, and **"Reflect on this"**.
-4. Click **"Reflect on this"**.
-5. Observe the thinking companion panel open with a dedicated margin reflection grounded in your highlighted excerpt.
-
-### Test Case 3: Voice Dictation & Multimodal Transcription
-1. Click the microphone icon in the top editor action bar.
-2. Speak your thoughts into your microphone (e.g. *"Today I noticed a recurring friction when starting new initiatives..."*).
-3. Click the microphone icon again to stop recording.
-4. Observe the transcribing status indicator.
-5. Verify that Gemini accurately transcribes the spoken reflection and automatically inserts it into the document at the cursor position.
-
-### Test Case 4: Thinking Companion Dialogue with Custom Personas
-1. In the right companion panel, type: `"I feel stuck between two equally appealing directions."`
-2. Press `Enter` or click the Send button.
-3. Verify Gemini responds with a supportive, concise inquiry without cheerful AI clichés.
-4. Open **Settings** (gear icon in the top right), navigate to the **Companion** tab, and switch the persona to **Philosophical Mirror** or **Empathetic Listener**.
-5. Send another message; verify the tone shifts according to the selected persona.
-
-### Test Case 5: Draft Opening Paragraph
-1. With at least 2 conversational turns in the thinking companion, click **"Draft opening paragraph"** in the companion header.
-2. Verify Gemini synthesizes the conversation into an authentic, first-person opening reflection (2-4 sentences) and appends it to the top of your document canvas.
-
-### Test Case 6: Session Synthesis & Insight Archival
-1. Click the **"Synthesize"** button in the top action bar.
-2. Verify the synthesis card appears at the top of the entry, featuring an evocative title, a concise realization summary, and key insight badges.
-3. Confirm the entry updates in the timeline rail on the left.
-
-### Test Case 7: Search, Archive, & Permanent Deletion
-1. Click the **Past Reflections** (folder/drawer) icon in the timeline rail.
-2. In the search box, search for a word typed in a previous entry; verify instant filtering.
-3. Click the trash icon on an entry; confirm the deletion modal appears with a warning.
-4. Confirm deletion; verify the entry is removed from Firestore and the UI.
-5. In **Settings → Account**, test the hard-delete account option: type `DELETE` to purge all Firestore documents under `/users/{userId}` and sign out.
-
----
-
-## 7. How to Push / Export to GitHub
-
-If you are using Google AI Studio Build:
-
-1. **Direct GitHub Export via AI Studio**:
-   - In the Google AI Studio top-right navigation, click the **Settings / More Options** menu (three dots).
-   - Select **Export to GitHub** or **Download ZIP**.
-   - If exporting to GitHub, authorize your GitHub account and select your destination repository.
-
-2. **Pushing via Git CLI**:
-   A local git repository has been initialized with the `main` branch. To link and push to your GitHub repository:
-   ```bash
-   git remote add origin https://github.com/<YOUR_USERNAME>/<YOUR_REPOSITORY_NAME>.git
-   git add .
-   git commit -m "chore: complete production Inklume journal with security baseline and documentation"
-   git push -u origin main
-   ```
-
-*(Note: Never add `.env.local` containing actual API keys to git. `.gitignore` is preconfigured to prevent secret commits.)*
+Open [http://localhost:3000](http://localhost:3000) in your browser to start journaling.
