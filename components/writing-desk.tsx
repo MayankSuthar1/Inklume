@@ -311,11 +311,14 @@ export function WritingDesk({
     setSynthesisError(null);
 
     try {
+      const token = await user.getIdToken();
       const response = await fetch('/api/journal/summarize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          userId: user.uid,
           docTitle: targetEntry.title || '',
           docText: currentDocText,
           turns: currentTurns.map((t) => ({ role: t.role, text: t.text })),

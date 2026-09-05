@@ -301,11 +301,22 @@ export function DocumentEditor({
       }
 
       try {
+        const authModule = await import('@/lib/auth-context');
+        // fallback to checking if firebase provides a direct way or use the provided method
+        // actually wait, DocumentEditor is a function component, we can just use hooks.
+        // Let's use `import { auth } from '@/lib/firebase';` directly to get current user if we don't want to change hook rules, or just change the fetch calls since they are async.
+        const { auth } = await import('@/lib/firebase');
+        const currentUser = auth.currentUser;
+        if (!currentUser) throw new Error('Not authenticated');
+        const token = await currentUser.getIdToken();
+
         const res = await fetch('/api/journal/draft-opening', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
           body: JSON.stringify({
-            userId: userId || 'anonymous',
             entryId,
             turns,
           }),
@@ -331,7 +342,7 @@ export function DocumentEditor({
         setIsDrafting(false);
       }
     },
-    [companionTurns, userId, entryId, editor]
+    [companionTurns, entryId, editor]
   );
 
   const handleConfirmInsert = useCallback(() => {
@@ -410,8 +421,16 @@ export function DocumentEditor({
       const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') ? 'mp4' : 'ogg';
       formData.append('audio', blob, `recording.${ext}`);
       
+      const { auth } = await import('@/lib/firebase');
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not authenticated');
+      const token = await currentUser.getIdToken();
+
       const res = await fetch('/api/journal/transcribe', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       });
 
@@ -517,11 +536,18 @@ export function DocumentEditor({
 
     setIsReflecting(true);
     try {
+      const { auth } = await import('@/lib/firebase');
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not authenticated');
+      const token = await currentUser.getIdToken();
+
       const response = await fetch('/api/journal/reflect-selection', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
         body: JSON.stringify({
-          userId,
           selection: selectionText,
           context: blockText,
         }),

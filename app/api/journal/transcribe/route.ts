@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/gemini-server';
+import { verifyIdToken } from '@/lib/firebase-admin';
 
 // Lazy initialization of GoogleGenAI SDK
 let genAIClient: GoogleGenAI | null = null;
@@ -47,8 +48,21 @@ function isRetryable(err: any): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get('x-forwarded-for') || 'transcribe-user';
-    const rateCheck = checkRateLimit(ip);
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    let decodedToken;
+    try {
+      decodedToken = await verifyIdToken(authHeader.split('Bearer ')[1]);
+    } catch (err) {
+      console.error('Invalid token', err);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const userId = decodedToken.uid;
+
+    const rateCheck = checkRateLimit(userId);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: `Rate limit exceeded. Please try again in ${rateCheck.retryAfterSec || 30} seconds.` },

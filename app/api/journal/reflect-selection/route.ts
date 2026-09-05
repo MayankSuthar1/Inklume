@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, runGeminiWithFallback } from '@/lib/gemini-server';
+import { verifyIdToken } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    let decodedToken;
+    try {
+      decodedToken = await verifyIdToken(authHeader.split('Bearer ')[1]);
+    } catch (err) {
+      console.error('Invalid token', err);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const userId = decodedToken.uid;
+
     let body: any;
     try {
       body = await req.json();
@@ -20,11 +35,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { selection, context, userId } = body;
-
-    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
-      return NextResponse.json({ error: 'Unauthorized: valid userId required' }, { status: 401 });
-    }
+    const { selection, context } = body;
 
     if (!selection || typeof selection !== 'string' || selection.trim().length === 0) {
       return NextResponse.json({ error: 'Selection is required' }, { status: 400 });

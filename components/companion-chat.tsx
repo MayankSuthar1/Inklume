@@ -151,13 +151,16 @@ export function CompanionChat({
     try {
       // Extract document plain text so Gemini understands full draft context
       const currentDocText = extractTextFromTipTap(entry.content);
+      const token = await user.getIdToken();
 
       const response = await fetch('/api/journal/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
         signal: controller.signal,
         body: JSON.stringify({
-          userId: user.uid,
           turns: nextTurns.map((t) => ({ role: t.role, text: t.text })),
           docTitle: entry.title || '',
           docText: currentDocText,
