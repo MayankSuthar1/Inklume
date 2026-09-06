@@ -64,16 +64,20 @@ function JournalApp() {
 
         // Manage activeEntry
         setActiveEntry((current) => {
-          if (!current) {
-            // If there's an existing entry, select the most recent one; otherwise create fresh
+          if (!current || current.userId !== user.uid) {
+            // If there's no existing entry or it belongs to a previous user, select the most recent one or create fresh
             return fetchedEntries.length > 0 ? fetchedEntries[0] : createNewEntry(user.uid);
           }
           // If current is an empty draft not yet saved, keep it
           if (isSessionEmpty(current) && !fetchedEntries.some((e) => e.id === current.id)) {
             return current;
           }
-          // If current was updated in Firestore, update it, else keep it
+          // If current was updated in Firestore, update it, else keep it if it's not empty
           const match = fetchedEntries.find((e) => e.id === current.id);
+          // If it's no longer in Firestore but wasn't empty, it might have been deleted, so pick first or new
+          if (!match && !isSessionEmpty(current)) {
+             return fetchedEntries.length > 0 ? fetchedEntries[0] : createNewEntry(user.uid);
+          }
           return match || current;
         });
       },
@@ -147,21 +151,8 @@ function JournalApp() {
     setDeleteModalState((prev) => ({ ...prev, isOpen: false }));
   }, [user, deleteModalState, activeEntry, entries, deleteAccountAndData]);
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#FAF7F0] flex flex-col items-center justify-center p-6 text-[#211F1C]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#1F4B43] mb-4" />
-        <p className="font-serif italic text-base text-[#211F1C]/70">Opening desk…</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LandingView />;
-  }
-
   // Ensure an active entry exists
-  const currentEntry = activeEntry || createNewEntry(user.uid);
+  const currentEntry = activeEntry || createNewEntry(user!.uid);
 
   return (
     <div className="flex h-screen w-full bg-[#FAF7F0] overflow-hidden">
@@ -245,11 +236,30 @@ function JournalApp() {
   );
 }
 
+function AuthGate() {
+  const { user, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F0] flex flex-col items-center justify-center p-6 text-[#211F1C]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#1F4B43] mb-4" />
+        <p className="font-serif italic text-base text-[#211F1C]/70">Opening desk…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingView />;
+  }
+
+  return <JournalApp key={user.uid} />;
+}
+
 export default function Page() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <JournalApp />
+        <AuthGate />
       </SettingsProvider>
     </AuthProvider>
   );
